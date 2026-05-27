@@ -1,0 +1,52 @@
+{
+  "name": "diesel-lubrication-system",
+  "version": "1.0.0",
+  "description": "柴油机润滑系统教学辅助系统",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:frontend": "cd frontend && npx vite build",
+    "pack": "npm run build:frontend && electron-builder --win --dir",
+    "dist": "npm run build:frontend && electron-builder --win"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sql.js": "^1.10.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0"
+  },
+  "build": {
+    "appId": "com.diesel.lubrication.system",
+    "productName": "柴油机润滑系统教学辅助系统",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "柴油机润滑系统"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/**/*",
+      "!backend/node_modules/**/*",
+      "frontend/dist/**/*"
+    ],
+    "extraResources": [],
+    "asar": false
+  }
+}

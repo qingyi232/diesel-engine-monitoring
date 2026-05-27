@@ -1,0 +1,12 @@
+{
+  "name": "diesel-lubrication-system",
+  "version": "1.0.0",
+  "description": "柴油机润滑系统教学辅助系统",
+  "main": "electron/main.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sql.js": "^1.10.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

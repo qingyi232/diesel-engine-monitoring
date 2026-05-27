@@ -1,0 +1,148 @@
+==================== 柴油机润滑系统 各模块核心代码 ====================
+
+
+一、数据库初始化模块（database.js）
+
+async function getDB() {
+  if (db) return db;
+  const SQL = await initSqlJs();
+  if (fs.existsSync(DB_PATH)) {
+    const buffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+    initTables();
+    seedData();
+    saveDB();
+  }
+  return db;
+}
+
+
+二、数据库表结构设计（database.js）
+
+CREATE TABLE IF NOT EXISTS sections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  description TEXT,
+  cover_image TEXT,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS quizzes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  question TEXT NOT NULL,
+  option_a TEXT, option_b TEXT, option_c TEXT, option_d TEXT,
+  correct_answer TEXT NOT NULL,
+  explanation TEXT,
+  sort_order INTEGER DEFAULT 0
+);
+
+
+三、后端身份认证中间件（server.js）
+
+function authMiddleware(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ code: 401, message: '未登录' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ code: 401, message: '登录已过期' });
+  }
+}
+
+
+四、用户登录接口（server.js）
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  const db = await getDB();
+  const result = db.exec(`SELECT * FROM users WHERE username='${username}' AND password='${password}'`);
+  if (result.length === 0 || result[0].values.length === 0)
+    return res.json({ code: 400, message: '账号或密码错误' });
+  const user = {};
+  result[0].columns.forEach((col, i) => { user[col] = result[0].values[0][i]; });
+  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ code: 200, data: { token, user: { id: user.id, username: user.username, role: user.role } } });
+});
+
+
+五、前端知识测试页面（Quiz.vue）
+
+const quizzes = ref([]);
+const answers = ref({});
+const currentIndex = ref(0);
+const current = computed(() => quizzes.value[currentIndex.value]);
+const allAnswered = computed(() => quizzes.value.every(q => answers[q.id]));
+
+const selectAnswer = (opt) => { answers.value[current.value.id] = opt; };
+const nextQ = () => { if (currentIndex.value < quizzes.value.length - 1) currentIndex.value++; };
+onMounted(async () => {
+  const res = await api.get('/api/quizzes');
+  quizzes.value = res.data.data;
+});
+
+
+六、前端板块学习页面（Section.vue）
+
+<div class="component-grid">
+  <div class="component-card" v-for="(item, idx) in currentContent?.sub_items"
+    :key="item.id" :class="{ active: selectedComponent === idx }"
+    @click="toggleComponent(idx)">
+    <div class="comp-icon">{{ idx + 1 }}</div>
+    <span class="comp-name">{{ item.title }}</span>
+  </div>
+</div>
+<div class="comp-detail" v-if="selectedComponent !== null">
+  <h4>{{ currentContent.sub_items[selectedComponent].title }}</h4>
+  <p>{{ currentContent.sub_items[selectedComponent].description }}</p>
+</div>
+
+
+七、Electron桌面应用启动（electron/main.js）
+
+async function startBackendServer() {
+  const backendPath = getBackendPath();
+  const distPath = getFrontendDistPath();
+  process.env.SERVER_PORT = SERVER_PORT;
+  process.env.FRONTEND_DIST_PATH = distPath;
+  process.env.DB_PATH = path.join(app.getPath('userData'), 'data.db');
+  require(path.join(backendPath, 'server.js'));
+  await new Promise(resolve => setTimeout(resolve, 1500));
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({ width: 1360, height: 860, minWidth: 1024 });
+  mainWindow.loadURL(`http://localhost:${SERVER_PORT}`);
+}
+
+
+八、前端API封装（utils/api.js）
+
+import axios from 'axios';
+const api = axios.create({ baseURL: '', timeout: 10000 });
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+api.interceptors.response.use(
+  response => response.data,
+  error => { if (error.response?.status === 401) { localStorage.removeItem('token'); location.href = '/'; } return Promise.reject(error); }
+);
+export default api;
+
+
+九、数据持久化保存（database.js）
+
+function saveDB() {
+  if (!db) return;
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(DB_PATH, buffer);
+}
+
+
+==================== 以上为各模块核心代码片段 ====================
